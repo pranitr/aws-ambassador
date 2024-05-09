@@ -2,6 +2,9 @@ version: 2.1
 
 orbs:
   browser-tools: circleci/browser-tools@1.4.8
+  aws-cli: circleci/aws-cli@4.1.3
+  aws-ecr: circleci/aws-ecr@9.0.4
+  aws-ecs: circleci/aws-ecs@4.0.0
 
 commands:
   run-pytest:
@@ -137,6 +140,32 @@ jobs:
       DOCKER_IMAGE: multi-arch-circleci-demo
       GOSS_SLEEP: 10
 
+  publish-image:
+    machine:
+      image: ubuntu-2204:current
+    steps:
+      - checkout
+      - load-docker-image
+      - aws-cli/setup:
+          profile_name: default
+          role_arn: arn:aws:iam::241262554134:role/ambassador
+          role_session_name: example-session
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - run:
+          name: "Tag Image to be pushed to ECR"
+          command: |
+            docker tag ${DOCKER_IMAGE}:${CIRCLE_SHA1} public.ecr.aws/${AWS_ECR_PUBLIC_REGISTRY_ALIAS}/${ECR_REPO}:${CIRCLE_SHA1}
+            docker tag ${DOCKER_IMAGE}:${CIRCLE_SHA1} public.ecr.aws/${AWS_ECR_PUBLIC_REGISTRY_ALIAS}/${ECR_REPO}:latest
+            docker images
+      - aws-ecr/push_image:
+          repo: ${ECR_REPO}
+          public_registry: true
+          tag: latest,${CIRCLE_SHA1}
+    environment:
+      DOCKER_IMAGE: multi-arch-circleci-demo
+      ECR_REPO: ambassador
+
 
 workflows:
   demo:
@@ -149,3 +178,21 @@ workflows:
           name: "Testing Container Image"
           requires:
             - "Building Container Image"
+      - publish-image:
+          name: "Publish Container Image to ECR"
+          requires:
+            - "Testing Python Code"
+            - "Testing Container Image"
+      - aws-ecs/deploy_service_update:
+          auth:
+            - aws-cli/setup:
+                profile_name: default
+                role_arn: arn:aws:iam::241262554134:role/ambassador
+                role_session_name: example-session
+          cluster: ambassador
+          container_image_name_updates: container=ambassador-amd,image-and-tag=public.ecr.aws/${AWS_ECR_PUBLIC_REGISTRY_ALIAS}/ambassador:${CIRCLE_SHA1}
+          family: ambassador-amd
+          service_name: ambassador-amd
+          profile_name: default
+          requires:
+            - "Publish Container Image to ECR"
