@@ -59,7 +59,7 @@ commands:
             command: docker load --input /tmp/docker-images/${DOCKER_IMAGE}-$(docker version -f {{.Server.Arch}})-${CIRCLE_SHA1}.tar
 
   testing-docker-image:
-    description: "Launches tests against Docker image"
+    description: "Launches tests against a Docker image"
     steps:
       - checkout
       - run:
@@ -251,6 +251,7 @@ workflows:
       - ggshield/scan:
           name: Scanning for Secrets with GitGuardian
           revision: $CIRCLE_SHA1
+          context: ambassador
       - test-demo:
           name: "Testing Python Code"
       - build-image:
@@ -269,15 +270,14 @@ workflows:
           name: "Scan << matrix.architecture >> Container Image"
           matrix:
             parameters:
-              # architecture: ["arm64", "amd64"]
-              architecture: [ "amd64"]
-              # os-type: ["linux-arm64", "linux"]
+              architecture: ["amd64"]
               os-type: ["linux"]
             exclude:
               - architecture: "arm64"
                 os-type: "linux"
               - architecture: "amd64"
                 os-type: "linux-arm64"
+          context: ambassador
           requires:
             - "Building << matrix.architecture >> Container Image"
       - publish-image:
@@ -288,7 +288,6 @@ workflows:
           requires:
             - "Testing << matrix.architecture >> Container Image"
             - "Testing Python Code"
-            # - "Scan << matrix.architecture >> Container Image"
             - "Scan amd64 Container Image"
       - publish-manifest:
           name: "Publish Manifest to ECR"
