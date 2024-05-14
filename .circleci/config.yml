@@ -59,7 +59,7 @@ commands:
             command: docker load --input /tmp/docker-images/${DOCKER_IMAGE}-$(docker version -f {{.Server.Arch}})-${CIRCLE_SHA1}.tar
 
   testing-docker-image:
-    description: "Launches tests against a Docker image"
+    description: "Launches tests against Docker image"
     steps:
       - checkout
       - run:
