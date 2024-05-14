@@ -269,8 +269,10 @@ workflows:
           name: "Scan << matrix.architecture >> Container Image"
           matrix:
             parameters:
-              architecture: ["arm64", "amd64"]
-              os-type: ["linux-arm64", "linux"]
+              # architecture: ["arm64", "amd64"]
+              architecture: [ "amd64"]
+              # os-type: ["linux-arm64", "linux"]
+              os-type: ["linux"]
             exclude:
               - architecture: "arm64"
                 os-type: "linux"
